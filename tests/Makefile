@@ -154,6 +154,8 @@ gcov-files-sparc-y += hw/timer/m48t59.c
 gcov-files-sparc64-y += hw/timer/m48t59.c
 check-qtest-arm-y = tests/tmp105-test$(EXESUF)
 gcov-files-arm-y += hw/misc/tmp105.c
+check-qtest-arm-y = tests/ftrtc011-test$(EXESUF)
+gcov-files-arm-y += hw/ftrtc011.c
 check-qtest-ppc-y += tests/boot-order-test$(EXESUF)
 check-qtest-ppc64-y += tests/boot-order-test$(EXESUF)
 check-qtest-ppc64-y += tests/spapr-phb-test$(EXESUF)
@@ -263,6 +265,7 @@ tests/hd-geo-test$(EXESUF): tests/hd-geo-test.o
 tests/boot-order-test$(EXESUF): tests/boot-order-test.o $(libqos-obj-y)
 tests/acpi-test$(EXESUF): tests/acpi-test.o $(libqos-obj-y)
 tests/tmp105-test$(EXESUF): tests/tmp105-test.o $(libqos-omap-obj-y)
+tests/ftrtc011-test$(EXESUF): tests/ftrtc011-test.o
 tests/i440fx-test$(EXESUF): tests/i440fx-test.o $(libqos-pc-obj-y)
 tests/fw_cfg-test$(EXESUF): tests/fw_cfg-test.o $(libqos-pc-obj-y)
 tests/e1000-test$(EXESUF): tests/e1000-test.o

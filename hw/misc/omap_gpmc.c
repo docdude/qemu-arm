@@ -162,6 +162,7 @@ static void omap_nand_setio(DeviceState *dev, uint64_t value,
     /* Write the specified value to the NAND device, respecting
      * both size of the NAND device and size of the write access.
      */
+printf("%s value=%lx  nandsize=%x size=%x\n", __func__,value, nandsize, size);
     switch (nandsize) {
     case OMAP_GPMC_8BIT:
         switch (size) {
@@ -624,7 +625,7 @@ static void omap_gpmc_write(void *opaque, hwaddr addr,
     if (size != 4 && gpmc_wordaccess_only(addr)) {
         return omap_badwidth_write32(opaque, addr, value);
     }
-
+printf("%s hwaddr=%lx value%lx size=%x\n", __func__,addr, value, size);
     switch (addr) {
     case 0x000:	/* GPMC_REVISION */
     case 0x014:	/* GPMC_SYSSTATUS */

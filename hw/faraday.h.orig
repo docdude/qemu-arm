@@ -1,0 +1,133 @@
+/*
+ * Faraday SoC platform support.
+ *
+ * Copyright (c) 2013 Faraday Technology
+ * Written by Kuo-Jung Su <dantesu@gmail.com>
+ *
+ * This code is licensed under the GNU GPL v2.
+ */
+#ifndef HW_ARM_FARADAY_H
+#define HW_ARM_FARADAY_H
+
+#include "hw/flash.h"
+#include "qemu/bitops.h"
+
+typedef struct FaradaySoCState {
+    /*< private >*/
+    SysBusDevice parent;
+
+    /*< public >*/
+    bool         ram_boot;
+    uint32_t     ahb_slave[32];
+    uint32_t     apb_slave[32];
+
+    hwaddr       rom_base;
+    hwaddr       ram_base;
+    qemu_irq     *cpu_pic;
+    qemu_irq     *pic;
+    DeviceState  *hdma[2];  /* AHB DMA */
+    DeviceState  *pdma[1];  /* APB DMA */
+    DeviceState  *spi[2];   /* Generic SPI bus */
+    DeviceState  *spi_fl[2];/* Dedicated SPI bus for flash memory */
+    DeviceState  *i2c[2];   /* Generic I2C bus */
+    DeviceState  *i2s[2];   /* Generic I2S bus */
+    DeviceState  *nandc[2]; /* NAND flash controller */
+
+    MemoryRegion *as;       /* address space */
+    MemoryRegion *ram;      /* external sdram */
+    pflash_t     *rom;      /* on-chip rom */
+    MemoryRegion *sram;     /* on-chip static ram */
+
+    MemoryRegion *rmr;      /* remappable memory region */
+    MemoryRegion *ram_visible;  /* ram alias controlled by DDR controller */
+} FaradaySoCState;
+
+/* SoC common APIs */
+#define TYPE_FARADAY_SOC    "faraday-soc"
+#define FARADAY_SOC(obj) \
+    OBJECT_CHECK(FaradaySoCState, obj, TYPE_FARADAY_SOC)
+
+static inline void faraday_soc_ram_setup(FaradaySoCState *s, bool visible)
+{
+    uint64_t size, ram_size = 0;
+
+    if (!s->as || !s->ram) {
+        return;
+    }
+
+    /* RAM size <= (1 << slave6.BIT[19-16]) MB */
+    size = (1 << extract32(s->ahb_slave[6], 16, 4)) << 20;
+    if (!ram_size || ram_size > size) {
+        ram_size = size;
+    }
+
+    if (visible) {
+        if (!s->ram_visible) {
+            s->ram_visible = g_new0(MemoryRegion, 1);
+            memory_region_init_alias(s->ram_visible,
+                                     TYPE_FARADAY_SOC ".ram_visible",
+                                     s->ram,
+                                     0,
+                                     ram_size);
+        }
+        memory_region_add_subregion(s->rmr, s->ram_base, s->ram_visible);
+    } else {
+        if (!s->ram_boot && s->ram_visible) {
+            memory_region_del_subregion(s->rmr, s->ram_visible);
+            g_free(s->ram_visible);
+            s->ram_visible = NULL;
+        }
+    }
+}
+
+/* Remap AHB slave 4 (ROM) & slave 6 (RAM) */
+static inline void faraday_soc_ahb_remap(FaradaySoCState *s, bool active)
+{
+    if (!s->ahb_slave[4] || !s->ahb_slave[6]) {
+        fprintf(stderr,
+                "faraday_soc_ahb_remap: "
+                "AHB slave 4 or 6 is not yet initialized!\n");
+        abort();
+    }
+
+    if (!active && s->ram_boot) {
+        return;
+    }
+
+    if (active) {
+        /* Remap RAM to base of ROM */
+        s->ram_base = s->ahb_slave[4] & 0xfff00000;
+        /* Remap ROM to base of ROM + size of RAM */
+        s->rom_base = s->ram_base
+                    + ((1 << extract32(s->ahb_slave[6], 16, 4)) << 20);
+    } else {
+        s->rom_base = s->ahb_slave[4] & 0xfff00000;
+        s->ram_base = s->ahb_slave[6] & 0xfff00000;
+    }
+
+    /* Update ROM/RAM Address */
+    if (s->as && s->ram_visible) {
+        memory_region_del_subregion(s->rmr, s->ram_visible);
+    }
+
+    if (s->rom) {
+        MemoryRegion *mr = sysbus_mmio_get_region(SYS_BUS_DEVICE(s->rom), 0);
+        memory_region_del_subregion(s->rmr, mr);
+        memory_region_add_subregion(s->rmr, s->rom_base, mr);
+    }
+
+    if (s->as && s->ram_visible) {
+        memory_region_add_subregion(s->rmr, s->ram_base, s->ram_visible);
+    }
+}
+
+/* ftgmac100.c */
+void ftgmac100_init(NICInfo *nd, uint32_t base, qemu_irq irq);
+
+/* ftssp010.c */
+void ftssp010_i2s_data_req(void *opaque, int tx, int rx);
+
+/* ftgmac100.c */
+void ftgmac100_init(NICInfo *nd, uint32_t base, qemu_irq irq);
+
+#endif

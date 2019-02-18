@@ -56,6 +56,8 @@ void pcie_host_mmcfg_update(PCIExpressHost *e,
                             int enable,
                             hwaddr addr,
                             uint32_t size);
+void pcie_mmcfg_data_write(void *opaque, hwaddr mmcfg_addr, uint64_t val, unsigned len);
+uint64_t pcie_mmcfg_data_read(void *opaque, hwaddr mmcfg_addr, unsigned len);
 
 /*
  * PCI express ECAM (Enhanced Configuration Address Mapping) format.
@@ -77,5 +79,29 @@ void pcie_host_mmcfg_update(PCIExpressHost *e,
 #define PCIE_MMCFG_DEVFN(addr)          (((addr) >> PCIE_MMCFG_DEVFN_BIT) & \
                                          PCIE_MMCFG_DEVFN_MASK)
 #define PCIE_MMCFG_CONFOFFSET(addr)     ((addr) & PCIE_MMCFG_CONFOFFSET_MASK)
+
+
+/* PCIE Config space accessing MACROS ---Broadcom*/
+
+#define	PCIECFG_BUS_SHIFT	24	/* Bus shift */
+#define	PCIECFG_SLOT_SHIFT	19	/* Slot/Device shift */
+#define	PCIECFG_FUN_SHIFT	16	/* Function shift */
+#define	PCIECFG_OFF_SHIFT	0	/* Register shift */
+
+#define	PCIECFG_BUS_MASK	0xff	/* Bus mask */
+#define	PCIECFG_SLOT_MASK	0x1f	/* Slot/Device mask */
+#define	PCIECFG_FUN_MASK	7	/* Function mask */
+#define	PCIECFG_OFF_MASK	0xfff	/* Register mask */
+
+#define	PCIE_CONFIG_ADDR(b, s, f, o)					\
+		((((b) & PCIECFG_BUS_MASK) << PCIECFG_BUS_SHIFT)		\
+		 | (((s) & PCIECFG_SLOT_MASK) << PCIECFG_SLOT_SHIFT)	\
+		 | (((f) & PCIECFG_FUN_MASK) << PCIECFG_FUN_SHIFT)	\
+		 | (((o) & PCIECFG_OFF_MASK) << PCIECFG_OFF_SHIFT))
+
+#define	PCIE_CONFIG_BUS(a)	(((a) >> PCIECFG_BUS_SHIFT) & PCIECFG_BUS_MASK)
+#define	PCIE_CONFIG_SLOT(a)	(((a) >> PCIECFG_SLOT_SHIFT) & PCIECFG_SLOT_MASK)
+#define	PCIE_CONFIG_FUN(a)	(((a) >> PCIECFG_FUN_SHIFT) & PCIECFG_FUN_MASK)
+#define	PCIE_CONFIG_OFF(a)	(((a) >> PCIECFG_OFF_SHIFT) & PCIECFG_OFF_MASK)
 
 #endif /* PCIE_HOST_H */

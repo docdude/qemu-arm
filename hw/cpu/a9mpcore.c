@@ -152,6 +152,7 @@ static Property a9mp_priv_properties[] = {
      * Other boards may differ and should set this property appropriately.
      */
     DEFINE_PROP_UINT32("num-irq", A9MPPrivState, num_irq, 96),
+//    DEFINE_PROP_UINT32("num-irq", A9MPPrivState, num_irq, 256),
     DEFINE_PROP_END_OF_LIST(),
 };
 

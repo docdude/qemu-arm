@@ -595,7 +595,7 @@ static void arm_sysctl_init(Object *obj)
     arm_sysctl_state *s = ARM_SYSCTL(obj);
 
     memory_region_init_io(&s->iomem, OBJECT(dev), &arm_sysctl_ops, s,
-                          "arm-sysctl", 0x1000);
+                          "cru_regs", 0x1000);
     sysbus_init_mmio(sd, &s->iomem);
     qdev_init_gpio_in(dev, arm_sysctl_gpio_set, 2);
     qdev_init_gpio_out(dev, &s->pl110_mux_ctrl, 1);

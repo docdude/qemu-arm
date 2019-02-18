@@ -7,11 +7,11 @@ include $(SRC_PATH)/rules.mak
 
 $(call set-vpath, $(SRC_PATH))
 ifdef CONFIG_LINUX
-QEMU_CFLAGS += -I../linux-headers
+QEMU_CFLAGS += -I../linux-headers -g
 endif
-QEMU_CFLAGS += -I.. -I$(SRC_PATH)/target-$(TARGET_BASE_ARCH) -DNEED_CPU_H
+QEMU_CFLAGS += -I.. -I$(SRC_PATH)/target-$(TARGET_BASE_ARCH) -DNEED_CPU_H -g
 
-QEMU_CFLAGS+=-I$(SRC_PATH)/include
+QEMU_CFLAGS+=-I$(SRC_PATH)/include -g
 
 ifdef CONFIG_USER_ONLY
 # user emulator name
@@ -87,7 +87,7 @@ obj-$(call lnot,$(CONFIG_KVM)) += kvm-stub.o
 
 ifdef CONFIG_LINUX_USER
 
-QEMU_CFLAGS+=-I$(SRC_PATH)/linux-user/$(TARGET_ABI_DIR) -I$(SRC_PATH)/linux-user
+QEMU_CFLAGS+=-I$(SRC_PATH)/linux-user/$(TARGET_ABI_DIR) -I$(SRC_PATH)/linux-user -g
 
 obj-y += linux-user/
 obj-y += gdbstub.o thunk.o user-exec.o

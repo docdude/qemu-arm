@@ -303,6 +303,23 @@ typedef enum TRBCCode {
 typedef struct XHCIState XHCIState;
 typedef struct XHCIStreamContext XHCIStreamContext;
 typedef struct XHCIEPContext XHCIEPContext;
+typedef struct XHCIInfo XHCIInfo;
+typedef struct XHCIPCIDeviceClass XHCIPCIDeviceClass;
+
+struct XHCIInfo {
+    const char *name;
+    uint16_t   vendor_id;
+    uint16_t   device_id;
+    uint8_t    revision;
+    uint8_t    irq_pin;
+    int        (*initfn)(PCIDevice *dev);
+    bool       unplug;
+};
+
+struct XHCIPCIDeviceClass {
+    PCIDeviceClass parent_class;
+    XHCIInfo       info;
+};
 
 #define get_field(data, field)                  \
     (((data) >> field##_SHIFT) & field##_MASK)
@@ -443,9 +460,9 @@ typedef struct XHCIInterrupter {
 
 struct XHCIState {
     /*< private >*/
+    PCIDevice dev;
     PCIDevice parent_obj;
     /*< public >*/
-
     USBBus bus;
     MemoryRegion mem;
     MemoryRegion mem_cap;
@@ -482,12 +499,12 @@ struct XHCIState {
 
     XHCIRing cmd_ring;
 };
-
+#if 0
 #define TYPE_XHCI "nec-usb-xhci"
 
 #define XHCI(obj) \
     OBJECT_CHECK(XHCIState, (obj), TYPE_XHCI)
-
+#endif
 typedef struct XHCIEvRingSeg {
     uint32_t addr_low;
     uint32_t addr_high;
@@ -2878,9 +2895,9 @@ static void xhci_port_reset(XHCIPort *port, bool warm_reset)
     xhci_port_notify(port, PORTSC_PRC);
 }
 
-static void xhci_reset(DeviceState *dev)
+static void xhci_reset(void *opaque)
 {
-    XHCIState *xhci = XHCI(dev);
+    XHCIState *xhci = opaque;
     int i;
 
     trace_usb_xhci_reset();
@@ -3535,17 +3552,18 @@ static void usb_xhci_init(XHCIState *xhci)
     }
 }
 
-static int usb_xhci_initfn(struct PCIDevice *dev)
+static int usb_xhci_initfn(PCIDevice *dev)
 {
     int i, ret;
-
-    XHCIState *xhci = XHCI(dev);
+    PCIDeviceClass *pc = PCI_DEVICE_GET_CLASS(dev);
+    XHCIPCIDeviceClass *u = container_of(pc, XHCIPCIDeviceClass, parent_class);
+    XHCIState *xhci = DO_UPCAST(XHCIState, dev, dev);;
 
     dev->config[PCI_CLASS_PROG] = 0x30;    /* xHCI */
     dev->config[PCI_INTERRUPT_PIN] = 0x01; /* interrupt pin 1 */
     dev->config[PCI_CACHE_LINE_SIZE] = 0x10;
     dev->config[0x60] = 0x30; /* release number */
-
+    pci_config_set_interrupt_pin(dev->config, u->info.irq_pin + 1);
     usb_xhci_init(xhci);
 
     if (xhci->numintrs > MAXINTRS) {
@@ -3565,7 +3583,7 @@ static int usb_xhci_initfn(struct PCIDevice *dev)
     }
 
     xhci->mfwrap_timer = timer_new_ns(QEMU_CLOCK_VIRTUAL, xhci_mfwrap_timer, xhci);
-
+    qemu_register_reset(xhci_reset, xhci);
     memory_region_init(&xhci->mem, OBJECT(xhci), "xhci", LEN_REGS);
     memory_region_init_io(&xhci->mem_cap, OBJECT(xhci), &xhci_cap_ops, xhci,
                           "capabilities", LEN_CAP);
@@ -3749,6 +3767,7 @@ static const VMStateDescription vmstate_xhci = {
     .version_id = 1,
     .post_load = usb_xhci_post_load,
     .fields = (VMStateField[]) {
+        VMSTATE_PCI_DEVICE(dev, XHCIState),
         VMSTATE_PCIE_DEVICE(parent_obj, XHCIState),
         VMSTATE_MSIX(parent_obj, XHCIState),
 
@@ -3778,6 +3797,13 @@ static const VMStateDescription vmstate_xhci = {
     }
 };
 
+static void usb_xhci_exit(PCIDevice *dev)
+{
+    XHCIState *s = DO_UPCAST(XHCIState, dev, dev);
+
+    memory_region_destroy(&s->mem);
+}
+
 static Property xhci_properties[] = {
     DEFINE_PROP_BIT("msi",      XHCIState, flags, XHCI_FLAG_USE_MSI, true),
     DEFINE_PROP_BIT("msix",     XHCIState, flags, XHCI_FLAG_USE_MSI_X, true),
@@ -3788,34 +3814,77 @@ static Property xhci_properties[] = {
     DEFINE_PROP_END_OF_LIST(),
 };
 
+
 static void xhci_class_init(ObjectClass *klass, void *data)
 {
-    PCIDeviceClass *k = PCI_DEVICE_CLASS(klass);
     DeviceClass *dc = DEVICE_CLASS(klass);
+    PCIDeviceClass *k = PCI_DEVICE_CLASS(klass);
+    XHCIPCIDeviceClass *u = container_of(k, XHCIPCIDeviceClass, parent_class);
+    XHCIInfo *info = data;
 
-    dc->vmsd    = &vmstate_xhci;
-    dc->props   = xhci_properties;
-    dc->reset   = xhci_reset;
+    k->init = info->initfn ? info->initfn : usb_xhci_initfn;
+    k->exit = info->unplug ? usb_xhci_exit : NULL;
+    k->vendor_id       = info->vendor_id;
+    k->device_id       = info->device_id;
+    k->revision        = info->revision;
+    k->class_id        = PCI_CLASS_SERIAL_USB;
+    k->revision        = 0x03;
+    k->is_express      = 1;
     dc->hotpluggable   = false;
+    dc->vmsd           = &vmstate_xhci;
+    dc->props  	       = xhci_properties;
+//    dc->reset          = xhci_reset;
     set_bit(DEVICE_CATEGORY_USB, dc->categories);
-    k->init         = usb_xhci_initfn;
-    k->vendor_id    = PCI_VENDOR_ID_NEC;
-    k->device_id    = PCI_DEVICE_ID_NEC_UPD720200;
-    k->class_id     = PCI_CLASS_SERIAL_USB;
-    k->revision     = 0x03;
-    k->is_express   = 1;
+    u->info            = *info;
 }
 
-static const TypeInfo xhci_info = {
-    .name          = TYPE_XHCI,
-    .parent        = TYPE_PCI_DEVICE,
-    .instance_size = sizeof(XHCIState),
-    .class_init    = xhci_class_init,
+static XHCIInfo xhci_info[] = {
+    {
+        .name      = "nec-usb-xhci",
+        .vendor_id = PCI_VENDOR_ID_INTEL,
+        .device_id = PCI_DEVICE_ID_NEC_UPD720200,
+        .revision  = 0x03,
+        .irq_pin   = 1,
+        .unplug    = false,
+    },{
+        .name      = "BCM472A-usb-xhci",
+        .vendor_id = PCI_VENDOR_ID_BROADCOM,
+        .device_id = BCM47XX_USB30H_ID, //BCM47XX_USB30H_ID	0x472a		/* 47xx usb 3.0 host */
+        .revision  = 0x03,
+        .irq_pin   = 1,
+        .unplug    = true,
+    }
 };
+//#define	BCM47XX_USB30H_ID	0x472a		/* 47xx usb 3.0 host */
+//#define	BCM47XX_USB30D_ID	0x472b		/* 47xx usb 3.0 device */
 
+
+//static const TypeInfo xhci_info = {
+  //  .name          = TYPE_XHCI,
+ //   .parent        = TYPE_PCI_DEVICE,
+ //   .instance_size = sizeof(XHCIState),
+ //   .class_init    = xhci_class_init,
+//};
+
+//static void xhci_register_types(void)
+//{
+//    type_register_static(&xhci_info);
+//}
 static void xhci_register_types(void)
 {
-    type_register_static(&xhci_info);
+    TypeInfo xhci_type_info = {
+        .parent        = TYPE_PCI_DEVICE,
+        .instance_size = sizeof(XHCIState),
+        .class_size    = sizeof(XHCIPCIDeviceClass),
+        .class_init    = xhci_class_init,
+    };
+    int i;
+
+    for (i = 0; i < ARRAY_SIZE(xhci_info); i++) {
+        xhci_type_info.name = xhci_info[i].name;
+        xhci_type_info.class_data = xhci_info + i;
+        type_register(&xhci_type_info);
+    }
 }
 
 type_init(xhci_register_types)

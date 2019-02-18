@@ -28,15 +28,18 @@
 static inline PCIDevice *pcie_dev_find_by_mmcfg_addr(PCIBus *s,
                                                      uint32_t mmcfg_addr)
 {
-    return pci_find_device(s, PCIE_MMCFG_BUS(mmcfg_addr),
-                           PCIE_MMCFG_DEVFN(mmcfg_addr));
+  //  return pci_find_device(s, PCIE_MMCFG_BUS(mmcfg_addr),
+   //                        PCIE_MMCFG_DEVFN(mmcfg_addr));
+printf("******hello");
+return pci_find_device(s, PCIE_CONFIG_BUS(mmcfg_addr),PCIE_CONFIG_SLOT(mmcfg_addr));
 }
 
-static void pcie_mmcfg_data_write(void *opaque, hwaddr mmcfg_addr,
+void pcie_mmcfg_data_write(void *opaque, hwaddr mmcfg_addr,
                                   uint64_t val, unsigned len)
 {
     PCIExpressHost *e = opaque;
     PCIBus *s = e->pci.bus;
+   //PCIBus *s = opaque;
     PCIDevice *pci_dev = pcie_dev_find_by_mmcfg_addr(s, mmcfg_addr);
     uint32_t addr;
     uint32_t limit;
@@ -44,7 +47,8 @@ static void pcie_mmcfg_data_write(void *opaque, hwaddr mmcfg_addr,
     if (!pci_dev) {
         return;
     }
-    addr = PCIE_MMCFG_CONFOFFSET(mmcfg_addr);
+//    addr = PCIE_MMCFG_CONFOFFSET(mmcfg_addr);
+    addr = PCIE_CONFIG_OFF(mmcfg_addr);
     limit = pci_config_size(pci_dev);
     if (limit <= addr) {
         /* conventional pci device can be behind pcie-to-pci bridge.
@@ -54,7 +58,7 @@ static void pcie_mmcfg_data_write(void *opaque, hwaddr mmcfg_addr,
     pci_host_config_write_common(pci_dev, addr, limit, val, len);
 }
 
-static uint64_t pcie_mmcfg_data_read(void *opaque,
+uint64_t pcie_mmcfg_data_read(void *opaque,
                                      hwaddr mmcfg_addr,
                                      unsigned len)
 {
@@ -67,7 +71,8 @@ static uint64_t pcie_mmcfg_data_read(void *opaque,
     if (!pci_dev) {
         return ~0x0;
     }
-    addr = PCIE_MMCFG_CONFOFFSET(mmcfg_addr);
+//    addr = PCIE_MMCFG_CONFOFFSET(mmcfg_addr);
+    addr = PCIE_CONFIG_OFF(mmcfg_addr);
     limit = pci_config_size(pci_dev);
     if (limit <= addr) {
         /* conventional pci device can be behind pcie-to-pci bridge.

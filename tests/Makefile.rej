@@ -1,0 +1,19 @@
+--- tests/Makefile
++++ tests/Makefile
+@@ -75,6 +75,8 @@
+ gcov-files-sparc64-y += hw/m48t59.c
+ check-qtest-arm-y = tests/tmp105-test$(EXESUF)
+ gcov-files-arm-y += hw/tmp105.c
++check-qtest-arm-y = tests/ftrtc011-test$(EXESUF)
++gcov-files-arm-y += hw/ftrtc011.c
+ 
+ GENERATED_HEADERS += tests/test-qapi-types.h tests/test-qapi-visit.h tests/test-qmp-commands.h
+ 
+@@ -133,6 +135,7 @@
+ tests/fdc-test$(EXESUF): tests/fdc-test.o
+ tests/hd-geo-test$(EXESUF): tests/hd-geo-test.o
+ tests/tmp105-test$(EXESUF): tests/tmp105-test.o
++tests/ftrtc011-test$(EXESUF): tests/ftrtc011-test.o
+ 
+ # QTest rules
+ 

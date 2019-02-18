@@ -9,12 +9,14 @@
 
 #include "hw/hw.h"
 #include "hw/i2c/i2c.h"
+#include "hw/audio.h"
 #include "audio/audio.h"
 
 #define IN_PORT_N	3
 #define OUT_PORT_N	3
 
-#define CODEC		"wm8750"
+//#define CODEC		"wm8750"
+#define TYPE_WM8750 "wm8750"
 
 typedef struct {
     int adc;
@@ -24,11 +26,11 @@ typedef struct {
 } WMRate;
 
 #define TYPE_WM8750 "wm8750"
-#define WM8750(obj) OBJECT_CHECK(WM8750State, (obj), TYPE_WM8750)
+//#define WM8750(obj) OBJECT_CHECK(WM8750State, (obj), TYPE_WM8750)
 
 typedef struct WM8750State {
-    I2CSlave parent_obj;
-
+//    I2CSlave parent_obj;
+    AudioCodecState parent;
     uint8_t i2c_data[2];
     int i2c_len;
     QEMUSoundCard card;
@@ -53,6 +55,9 @@ typedef struct WM8750State {
     uint8_t rate_vmstate;
     int adc_hz, dac_hz, ext_adc_hz, ext_dac_hz, master;
 } WM8750State;
+
+#define WM8750(obj) \
+    OBJECT_CHECK(WM8750State, obj, TYPE_WM8750)
 
 /* pow(10.0, -i / 20.0) * 255, i = 0..42 */
 static const uint8_t wm8750_vol_db_table[] = {
@@ -84,14 +89,14 @@ static inline void wm8750_out_flush(WM8750State *s)
 
 static void wm8750_audio_in_cb(void *opaque, int avail_b)
 {
-    WM8750State *s = (WM8750State *) opaque;
+    WM8750State *s = WM8750(opaque);
     s->req_in = avail_b;
     s->data_req(s->opaque, s->req_out >> 2, avail_b >> 2);
 }
 
 static void wm8750_audio_out_cb(void *opaque, int free_b)
 {
-    WM8750State *s = (WM8750State *) opaque;
+    WM8750State *s = WM8750(opaque);
 
     if (s->idx_out >= free_b) {
         s->idx_out = free_b;
@@ -204,11 +209,11 @@ static void wm8750_set_format(WM8750State *s)
     in_fmt.fmt = AUD_FMT_S16;
 
     s->adc_voice[0] = AUD_open_in(&s->card, s->adc_voice[0],
-                    CODEC ".input1", s, wm8750_audio_in_cb, &in_fmt);
+                    TYPE_WM8750 ".input1", s, wm8750_audio_in_cb, &in_fmt);
     s->adc_voice[1] = AUD_open_in(&s->card, s->adc_voice[1],
-                    CODEC ".input2", s, wm8750_audio_in_cb, &in_fmt);
+                    TYPE_WM8750 ".input2", s, wm8750_audio_in_cb, &in_fmt);
     s->adc_voice[2] = AUD_open_in(&s->card, s->adc_voice[2],
-                    CODEC ".input3", s, wm8750_audio_in_cb, &in_fmt);
+                    TYPE_WM8750 ".input3", s, wm8750_audio_in_cb, &in_fmt);
 
     /* Setup output */
     out_fmt.endianness = 0;
@@ -217,12 +222,12 @@ static void wm8750_set_format(WM8750State *s)
     out_fmt.fmt = AUD_FMT_S16;
 
     s->dac_voice[0] = AUD_open_out(&s->card, s->dac_voice[0],
-                    CODEC ".speaker", s, wm8750_audio_out_cb, &out_fmt);
+                    TYPE_WM8750 ".speaker", s, wm8750_audio_out_cb, &out_fmt);
     s->dac_voice[1] = AUD_open_out(&s->card, s->dac_voice[1],
-                    CODEC ".headphone", s, wm8750_audio_out_cb, &out_fmt);
+                    TYPE_WM8750 ".headphone", s, wm8750_audio_out_cb, &out_fmt);
     /* MONOMIX is also in stereo for simplicity */
     s->dac_voice[2] = AUD_open_out(&s->card, s->dac_voice[2],
-                    CODEC ".monomix", s, wm8750_audio_out_cb, &out_fmt);
+                    TYPE_WM8750 ".monomix", s, wm8750_audio_out_cb, &out_fmt);
     /* no sense emulating OUT3 which is a mix of other outputs */
 
     wm8750_vol_update(s);
@@ -547,7 +552,8 @@ static int wm8750_tx(I2CSlave *i2c, uint8_t data)
         break;
 
     case WM8750_RESET:	/* Reset */
-        wm8750_reset(I2C_SLAVE(s));
+//        wm8750_reset(I2C_SLAVE(s));
+        wm8750_reset(I2C_SLAVE(&s->parent));
         break;
 
 #ifdef VERBOSE
@@ -566,21 +572,21 @@ static int wm8750_rx(I2CSlave *i2c)
 
 static void wm8750_pre_save(void *opaque)
 {
-    WM8750State *s = opaque;
+    WM8750State *s = WM8750(opaque);
 
     s->rate_vmstate = s->rate - wm_rate_table;
 }
 
 static int wm8750_post_load(void *opaque, int version_id)
 {
-    WM8750State *s = opaque;
+    WM8750State *s = WM8750(opaque);
 
     s->rate = &wm_rate_table[s->rate_vmstate & 0x1f];
     return 0;
 }
 
 static const VMStateDescription vmstate_wm8750 = {
-    .name = CODEC,
+    .name = TYPE_WM8750,
     .version_id = 0,
     .minimum_version_id = 0,
     .minimum_version_id_old = 0,
@@ -609,7 +615,7 @@ static const VMStateDescription vmstate_wm8750 = {
         VMSTATE_UINT8(format, WM8750State),
         VMSTATE_UINT8(power, WM8750State),
         VMSTATE_UINT8(rate_vmstate, WM8750State),
-        VMSTATE_I2C_SLAVE(parent_obj, WM8750State),
+//        VMSTATE_I2C_SLAVE(parent_obj, WM8750State),
         VMSTATE_END_OF_LIST()
     }
 };
@@ -618,8 +624,9 @@ static int wm8750_init(I2CSlave *i2c)
 {
     WM8750State *s = WM8750(i2c);
 
-    AUD_register_card(CODEC, &s->card);
-    wm8750_reset(I2C_SLAVE(s));
+
+    AUD_register_card(TYPE_WM8750, &s->card);
+    wm8750_reset(I2C_SLAVE(&s->parent));
 
     return 0;
 }
@@ -635,7 +642,7 @@ static void wm8750_fini(I2CSlave *i2c)
 }
 #endif
 
-void wm8750_data_req_set(DeviceState *dev,
+static void wm8750_data_req_set(DeviceState *dev,
                 void (*data_req)(void *, int, int), void *opaque)
 {
     WM8750State *s = WM8750(dev);
@@ -644,10 +651,10 @@ void wm8750_data_req_set(DeviceState *dev,
     s->opaque = opaque;
 }
 
-void wm8750_dac_dat(void *opaque, uint32_t sample)
+static void wm8750_dac_dat(void *opaque, uint32_t sample)
 {
-    WM8750State *s = (WM8750State *) opaque;
-
+//    WM8750State *s = (WM8750State *) opaque;
+    WM8750State *s = WM8750(opaque);
     *(uint32_t *) &s->data_out[s->idx_out] = sample;
     s->req_out -= 4;
     s->idx_out += 4;
@@ -655,9 +662,9 @@ void wm8750_dac_dat(void *opaque, uint32_t sample)
         wm8750_out_flush(s);
 }
 
-void *wm8750_dac_buffer(void *opaque, int samples)
+static void *wm8750_dac_buffer(void *opaque, int samples)
 {
-    WM8750State *s = (WM8750State *) opaque;
+    WM8750State *s = WM8750(opaque);
     /* XXX: Should check if there are <i>samples</i> free samples available */
     void *ret = s->data_out + s->idx_out;
 
@@ -666,16 +673,16 @@ void *wm8750_dac_buffer(void *opaque, int samples)
     return ret;
 }
 
-void wm8750_dac_commit(void *opaque)
+static void wm8750_dac_commit(void *opaque)
 {
-    WM8750State *s = (WM8750State *) opaque;
+    WM8750State *s = WM8750(opaque);
 
     wm8750_out_flush(s);
 }
 
-uint32_t wm8750_adc_dat(void *opaque)
+static uint32_t wm8750_adc_dat(void *opaque)
 {
-    WM8750State *s = (WM8750State *) opaque;
+    WM8750State *s = WM8750(opaque);
     uint32_t *data;
 
     if (s->idx_in >= sizeof(s->data_in))
@@ -687,9 +694,9 @@ uint32_t wm8750_adc_dat(void *opaque)
     return *data;
 }
 
-void wm8750_set_bclk_in(void *opaque, int new_hz)
+static void wm8750_set_bclk_in(void *opaque, int new_hz)
 {
-    WM8750State *s = (WM8750State *) opaque;
+    WM8750State *s = WM8750(opaque);
 
     s->ext_adc_hz = new_hz;
     s->ext_dac_hz = new_hz;
@@ -700,6 +707,14 @@ static void wm8750_class_init(ObjectClass *klass, void *data)
 {
     DeviceClass *dc = DEVICE_CLASS(klass);
     I2CSlaveClass *sc = I2C_SLAVE_CLASS(klass);
+    AudioCodecClass *ac = AUDIO_CODEC_CLASS(klass);
+
+    ac->data_req_set = wm8750_data_req_set;
+    ac->dac_dat = wm8750_dac_dat;
+    ac->adc_dat = wm8750_adc_dat;
+    ac->dac_buffer = wm8750_dac_buffer;
+    ac->dac_commit = wm8750_dac_commit;
+    ac->set_bclk_in = wm8750_set_bclk_in;
 
     sc->init = wm8750_init;
     sc->event = wm8750_event;
@@ -709,8 +724,10 @@ static void wm8750_class_init(ObjectClass *klass, void *data)
 }
 
 static const TypeInfo wm8750_info = {
+//    .name          = TYPE_WM8750,
+//    .parent        = TYPE_I2C_SLAVE,
     .name          = TYPE_WM8750,
-    .parent        = TYPE_I2C_SLAVE,
+    .parent        = TYPE_AUDIO_CODEC,
     .instance_size = sizeof(WM8750State),
     .class_init    = wm8750_class_init,
 };

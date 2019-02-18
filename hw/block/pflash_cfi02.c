@@ -43,7 +43,7 @@
 #include "qemu/host-utils.h"
 #include "hw/sysbus.h"
 
-//#define PFLASH_DEBUG
+#define PFLASH_DEBUG
 #ifdef PFLASH_DEBUG
 #define DPRINTF(fmt, ...)                                  \
 do {                                                       \

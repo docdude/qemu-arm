@@ -25,6 +25,11 @@ obj-$(CONFIG_LINUX) += vfio.o
 endif
 
 obj-$(CONFIG_REALVIEW) += arm_sysctl.o
+obj-$(CONFIG_BROADCOM) += sb_chipc.o
+obj-$(CONFIG_BROADCOM) += sb_hwregs.o
+obj-$(CONFIG_BROADCOM) += aidmp.o
+obj-$(CONFIG_BROADCOM) += nand_core.o
+obj-$(CONFIG_BROADCOM) += nand_regs.o
 obj-$(CONFIG_NSERIES) += cbus.o
 obj-$(CONFIG_ECCMEMCTL) += eccmemctl.o
 obj-$(CONFIG_EXYNOS4) += exynos4210_pmu.o

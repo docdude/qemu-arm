@@ -23,6 +23,7 @@
 #include "sysemu/blockdev.h"
 #include "ui/console.h"
 #include "audio/audio.h"
+#include "hw/audio.h"
 #include "exec/address-spaces.h"
 #include "sysemu/qtest.h"
 
@@ -360,9 +361,11 @@ static void z2_init(QEMUMachineInitArgs *args)
     i2c_create_slave(bus, TYPE_AER915, 0x55);
     wm = i2c_create_slave(bus, "wm8750", 0x1b);
     mpu->i2s->opaque = wm;
-    mpu->i2s->codec_out = wm8750_dac_dat;
-    mpu->i2s->codec_in = wm8750_adc_dat;
-    wm8750_data_req_set(wm, mpu->i2s->data_req, mpu->i2s);
+    mpu->i2s->codec_out = audio_codec_dac_dat;
+    mpu->i2s->codec_in = audio_codec_adc_dat;
+    audio_codec_data_req_set(DEVICE(wm),
+                             mpu->i2s->data_req,
+                             mpu->i2s);
 
     qdev_connect_gpio_out(mpu->gpio, Z2_GPIO_LCD_CS,
         qemu_allocate_irqs(z2_lcd_cs, z2_lcd, 1)[0]);

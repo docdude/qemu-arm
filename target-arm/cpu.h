@@ -222,6 +222,8 @@ typedef struct CPUARMState {
         uint32_t c15_diagnostic; /* diagnostic register */
         uint32_t c15_power_diagnostic;
         uint32_t c15_power_control; /* power control */
+        uint32_t c15_tcm_data;      /* Data TCM region register */
+        uint32_t c15_tcm_inst;      /* Instruction TCM region register */
         uint64_t dbgbvr[16]; /* breakpoint value registers */
         uint64_t dbgbcr[16]; /* breakpoint control registers */
         uint64_t dbgwvr[16]; /* watchpoint value registers */
@@ -630,6 +632,8 @@ enum arm_features {
     ARM_FEATURE_MPIDR, /* has cp15 MPIDR */
     ARM_FEATURE_PXN, /* has Privileged Execute Never bit */
     ARM_FEATURE_LPAE, /* has Large Physical Address Extension */
+    ARM_FEATURE_TCM_FARADAY, /* Faraday Scratchpad(TCM) */
+    ARM_FEATURE_MPU_FARADAY, /* Faraday MPU */
     ARM_FEATURE_V8,
     ARM_FEATURE_AARCH64, /* supports 64 bit mode */
     ARM_FEATURE_V8_AES, /* implements AES part of v8 Crypto Extensions */
@@ -1082,6 +1086,7 @@ static inline CPUARMState *cpu_init(const char *cpu_model)
 #define cpu_gen_code cpu_arm_gen_code
 #define cpu_signal_handler cpu_arm_signal_handler
 #define cpu_list arm_cpu_list
+//#define CPU_SAVE_VERSION 10
 
 /* MMU modes definitions */
 #define MMU_MODE0_SUFFIX _kernel

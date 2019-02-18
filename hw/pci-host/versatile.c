@@ -11,7 +11,10 @@
 #include "hw/pci/pci.h"
 #include "hw/pci/pci_bus.h"
 #include "hw/pci/pci_host.h"
+#include "hw/pci/pcie_host.h"
 #include "exec/address-spaces.h"
+#include "hw/loader.h"
+
 
 /* Old and buggy versions of QEMU used the wrong mapping from
  * PCI IRQs to system interrupt lines. Unfortunately the Linux
@@ -59,6 +62,16 @@
  * property so the user can make us start in BROKEN or FORCE_OK
  * on reset if they know they have a bad or good kernel.
  */
+
+#define PCIREGS_ERR_DEBUG
+#ifdef PCIREGS_ERR_DEBUG
+#define DB_PRINT(...) do { \
+    fprintf(stderr,  ": %s: ", __func__); \
+    fprintf(stderr, ## __VA_ARGS__); \
+    } while (0);
+#else
+    #define DB_PRINT(...)
+#endif
 enum {
     PCI_VPB_IRQMAP_ASSUME_OK,
     PCI_VPB_IRQMAP_BROKEN,
@@ -94,7 +107,47 @@ typedef struct {
     uint32_t selfid;
     uint32_t flags;
     uint8_t irq_mapping;
+    uint32_t config_baseaddr;
+    uint32_t configindaddr;	/* pcie config space access: Address field: 0x120 */
+    uint32_t configinddata;	/* pcie config space access: Data field: 0x124 */
+    uint32_t func0_imap1;	/* 0xC80 */
+    uint32_t iarr0_lower;	/* 0xD00 */
+    uint32_t iarr0_upper;	/* 0xD04 */
+    uint32_t iarr1_lower;	/* 0xD08 */
+    uint32_t iarr1_upper;	/* 0xD0C */
+    uint32_t iarr2_lower;	/* 0xD10 */
+    uint32_t iarr2_upper;	/* 0xD14 */
+    uint32_t oarr0;		/* 0xD20 */
+    uint32_t oarr1;		/* 0xD28 */
+    uint32_t oarr2;		/* 0xD30 */;
+    uint32_t omap0_lower;	/* 0xD40 */
+    uint32_t omap0_upper;	/* 0xD44 */
+    uint32_t omap1_lower;	/* 0xD48 */
 } PCIVPBState;
+
+static const uint64_t pci_conf_data[] = {
+0x801214E4,0x6801214,0x68012,0x10000680,0x100006,0x1001000,0x10010,0x100,0x2000001,0x10020000,0x100200,
+0x1001002,0x10010,0x100,0x1,0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x1000000,0x1010000,0x10100,0x101,0x1,0x0,0x0,0x0,
+0x8000000,0x50080000,0x8500800,0xF1085008,0xFFF10850,0x1FFF108,0x1FFF1,0x1FF,0x1,0x0,0x0,0x0,0x0,0x0,0x0,
+0x0,0x0,0x0,0x0,0x48000000,0x480000,0x4800,0x48,0x0,0x0,0x0,0x0,0xA3000000,0x1A30000,0x101A300,0x101A3,
+0x101,0x1,0x0,0x0,0x0,0x0,0x0,0x0,0x1000000,0xAC010000,0x3AC0100,0xC803AC01,0x8C803AC,0x2008C803,0x2008C8,
+0x2008,0x20,0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x0,
+0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x0,
+0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x0,
+0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x10000000,0x100000,0x42001000,0x420010,0x2004200,0x80020042,
+0x800200,0x8002,0x50000080,0x2C500000,0x102C5000,0x102C50,0x1200102C,0x5C120010,0x655C1200,0x655C12,0x655C,0x65,
+0x12000000,0x90120000,0x901200,0x9012,0x90,0x0,0x0,0x0,0x40000000,0x400000,0x4000,0x40,0x1000000,0x10000,0x100,
+0x1,0x0,0x0,0x1F000000,0x1F0000,0x8001F00,0x8001F,0x800,0x8,0x0,0x0,0x0,0x0,0x0,0x0,0x2000000,0x20000,0x200,0x2,
+0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x0,
+0x0,0x0,0x0,0x0,0x0,0x0,0x0,
+    };
+ //   for (n = 0; n < ARRAY_SIZE(pci_conf_data); n++) {
+   //     pci_conf_data[n] = tswap32(pci_conf_data[n]);
+   // }
+ //   rom_add_blob_fixed("pci_conf_data", pci_conf_data, sizeof(pci_conf_data), 0x18012400);
+  //  rom_add_blob_fixed("pci_conf_data", pci_conf_data, sizeof(pci_conf_data), 0x18013400);
+//}
+
 
 static void pci_vpb_update_window(PCIVPBState *s, int i)
 {
@@ -168,15 +221,32 @@ typedef enum {
     PCI_SMAP2 = 0x1c,
 } PCIVPBControlRegs;
 
+static inline void pci_cfg_write_word(PCIVPBState *s, uint8_t a)
+{
+    uint8_t x[2] = { a, 0 };
+    
+    cpu_physical_memory_write(s->config_baseaddr, x, 2);
+}
+
+static inline uint32_t pci_cfg_read_word(PCIVPBState *s, uint8_t val)
+{
+    uint32_t x[2];
+    
+    cpu_physical_memory_read(s->config_baseaddr + val, x, 1);
+    DB_PRINT("addr: %08x val: 0x%" PRIx32 " data: 0x%" PRIx32 "\n", (unsigned)(s->config_baseaddr + val),val, (unsigned)x[1]);
+    return x[0];
+}
+
 static void pci_vpb_reg_write(void *opaque, hwaddr addr,
                               uint64_t val, unsigned size)
 {
     PCIVPBState *s = opaque;
-
+    DB_PRINT("offset: %08x data: 0x%" PRIx64 "\n", (unsigned)addr, val);
     switch (addr) {
-    case PCI_IMAP0:
-    case PCI_IMAP1:
-    case PCI_IMAP2:
+//    case PCI_IMAP0:
+    case 0x00:
+//    case PCI_IMAP1:
+//    case PCI_IMAP2:
     {
         int win = (addr - PCI_IMAP0) >> 2;
         s->imap[win] = val;
@@ -197,14 +267,71 @@ static void pci_vpb_reg_write(void *opaque, hwaddr addr,
         s->smap[win] = val;
         break;
     }
+    case 0x120: /* configindaddr */	/* pcie config space access: Address field */
+        s->configindaddr = val;
+if (val==0x4d4) val=0xb0;
+pci_cfg_read_word(s, val);
+
+
+//if (val==0xb4) s->configinddata=0x102C50;
+//if (val==0xc) s->configinddata=0x10010;
+//if (val==0xdc) s->configinddata=0x2;
+//if (val==0x4) s->configinddata=0x060010;
+//if (val==0x10) s->configinddata=0x0;
+        break;
+    case 0x124: /* configinddata */	/* pcie config space access: Data field:  */
+	s->configinddata = val;//0x10010000;//val;
+        break; //0x2008; //for 0x18012000, 0x18013000.....0x10010000 for 0x18014000
+    case 0x400 ... 0x7ff:
+        break;
+    case 0xC80: /* func0_imap1 */	
+	s->func0_imap1 = val;
+	break;
+    case 0xD00: /* iarr0_lower */	
+	s->iarr0_lower = val;
+	break;
+    case 0xD04: /* iarr0_upper */	
+	s->iarr0_upper = val;
+	break;
+    case 0xD08: /* iarr1_lower */	
+	s->iarr1_lower = val;
+	break;
+    case 0xD0C: /* iarr1_upper */	
+	s->iarr1_upper = val;
+	break;
+    case 0xD10: /* iarr2_lower */	
+	s->iarr2_lower = val;
+	break;
+    case 0xD14: /* iarr2_upper */	
+	s->iarr1_upper = val;
+	break;
+    case 0xD20: /* oarr0 */		
+	s->oarr0 = val;
+	break;
+    case 0xD28: /* oarr1 */		
+	s->oarr1 = val;
+	break;
+    case 0xD30: /* oarr2 */		
+	s->oarr2 = val;
+	break;
+    case 0xD40: /* omap0_lower */	
+	s->omap0_lower = val;
+	break;
+    case 0xD44: /* omap0_upper */	
+	s->omap0_upper = val;
+	break;
+    case 0xD48: /* omap1_lower */	
+	s->omap1_lower = val;
+	break;
+
+
     default:
-        qemu_log_mask(LOG_GUEST_ERROR,
-                      "pci_vpb_reg_write: Bad offset %x\n", (int)addr);
+        DB_PRINT("pci_vpb_reg_write: Bad offset %x\n", (int)addr);
         break;
     }
 }
 
-static uint64_t pci_vpb_reg_read(void *opaque, hwaddr addr,
+static uint64_t pci_vpb_reg_read_imp(void *opaque, hwaddr addr,
                                  unsigned size)
 {
     PCIVPBState *s = opaque;
@@ -228,11 +355,23 @@ static uint64_t pci_vpb_reg_read(void *opaque, hwaddr addr,
         int win = (addr - PCI_SMAP0) >> 2;
         return s->smap[win];
     }
+    case 0x120: /* configindaddr */	/* pcie config space access: Address field */
+        return s->configindaddr;  //0xBC;
+    case 0x124: /* configinddata */	/* pcie config space access: Data field:  */
+        return s->configinddata; //for 0x18012000, 0x18013000.....0x10010000 for 0x18014000
     default:
-        qemu_log_mask(LOG_GUEST_ERROR,
-                      "pci_vpb_reg_read: Bad offset %x\n", (int)addr);
+        DB_PRINT("pci_vpb_reg_read: Bad offset %x\n", (int)addr);
         return 0;
     }
+}
+
+static uint64_t pci_vpb_reg_read(void *opaque, hwaddr addr,
+                                 unsigned size)
+{
+    uint32_t ret = pci_vpb_reg_read_imp(opaque, addr, size);
+
+    DB_PRINT("addr: %08x data: 0x%" PRIx32 "\n", (unsigned)addr, ret);
+    return ret;
 }
 
 static const MemoryRegionOps pci_vpb_reg_ops = {
@@ -284,20 +423,26 @@ static void pci_vpb_config_write(void *opaque, hwaddr addr,
                                  uint64_t val, unsigned size)
 {
     PCIVPBState *s = opaque;
+    DB_PRINT("addr: %08x data: 0x%" PRIx64 "\n", (unsigned)addr, val);
     if (!s->realview && (addr & 0xff) == PCI_INTERRUPT_LINE
         && s->irq_mapping == PCI_VPB_IRQMAP_ASSUME_OK) {
         uint8_t devfn = addr >> 8;
         s->irq_mapping = pci_vpb_broken_irq(PCI_SLOT(devfn), val);
     }
+//    pcie_mmcfg_data_write(&s->pci_bus, 0x380000 + addr, val, size);
     pci_data_write(&s->pci_bus, addr, val, size);
+
+
 }
 
 static uint64_t pci_vpb_config_read(void *opaque, hwaddr addr,
                                     unsigned size)
 {
     PCIVPBState *s = opaque;
-    uint32_t val;
+    uint64_t val;
+//    val = pcie_mmcfg_data_read(&s->pci_bus, s->config_baseaddr + addr, size);
     val = pci_data_read(&s->pci_bus, addr, size);
+    DB_PRINT("addr: %08x data: 0x%" PRIx64 "\n", (unsigned)addr, val);
     return val;
 }
 
@@ -305,6 +450,11 @@ static const MemoryRegionOps pci_vpb_config_ops = {
     .read = pci_vpb_config_read,
     .write = pci_vpb_config_write,
     .endianness = DEVICE_NATIVE_ENDIAN,
+    .valid = {
+        .min_access_size = 4,
+        .max_access_size = 4,
+    },
+
 };
 
 static int pci_vpb_map_irq(PCIDevice *d, int irq_num)
@@ -372,6 +522,24 @@ static void pci_vpb_reset(DeviceState *d)
     s->selfid = 0;
     s->flags = 0;
     s->irq_mapping = s->irq_mapping_prop;
+//    s->configinddata = 0x8002; 
+int n;
+uint64_t x[2];
+/* Load configuration data in config address space */
+    for (n = 0; n < ARRAY_SIZE(pci_conf_data); n++) {
+                cpu_physical_memory_write(0x18012400+n,
+                                 &pci_conf_data[n],
+                                  4);
+  cpu_physical_memory_read(0x18012400+n,
+                                 x,
+                                  4);
+    }
+  
+
+
+     //   cpu_physical_memory_write(0x18013400,
+       //                           pci_conf_data,
+         //                         sizeof(pci_conf_data));
 
     pci_vpb_update_all_windows(s);
 }
@@ -396,6 +564,7 @@ static void pci_vpb_init(Object *obj)
     s->mem_win_size[0] = 0x0c000000;
     s->mem_win_size[1] = 0x10000000;
     s->mem_win_size[2] = 0x10000000;
+
 }
 
 static void pci_vpb_realize(DeviceState *dev, Error **errp)
@@ -424,36 +593,39 @@ static void pci_vpb_realize(DeviceState *dev, Error **errp)
      * 3 : PCI IO window
      * 4..6 : PCI memory windows
      */
-    memory_region_init_io(&s->controlregs, OBJECT(s), &pci_vpb_reg_ops, s,
-                          "pci-vpb-regs", 0x1000);
-    sysbus_init_mmio(sbd, &s->controlregs);
-    memory_region_init_io(&s->mem_config, OBJECT(s), &pci_vpb_config_ops, s,
-                          "pci-vpb-selfconfig", 0x1000000);
-    sysbus_init_mmio(sbd, &s->mem_config);
-    memory_region_init_io(&s->mem_config2, OBJECT(s), &pci_vpb_config_ops, s,
-                          "pci-vpb-config", 0x1000000);
-    sysbus_init_mmio(sbd, &s->mem_config2);
 
-    /* The window into I/O space is always into a fixed base address;
-     * its size is the same for both realview and versatile.
-     */
-    memory_region_init_alias(&s->pci_io_window, OBJECT(s), "pci-vbp-io-window",
+    	memory_region_init_io(&s->controlregs, OBJECT(s), &pci_vpb_reg_ops, s,
+                          "pci-vpb-regs", 0x400);
+    	sysbus_init_mmio(sbd, &s->controlregs);
+    	memory_region_init_io(&s->mem_config, OBJECT(s), &pci_vpb_config_ops, s,
+                          "pci-vpb-selfconfig", 0x400);
+    	sysbus_init_mmio(sbd, &s->mem_config);
+    	memory_region_init_io(&s->mem_config2, OBJECT(s), &pci_vpb_config_ops, s,
+                          "pci-vpb-config", 0x100);
+    	sysbus_init_mmio(sbd, &s->mem_config2);
+
+   	 /* The window into I/O space is always into a fixed base address;
+   	  * its size is the same for both realview and versatile.
+   	  */
+    	memory_region_init_alias(&s->pci_io_window, OBJECT(s), "pci-vbp-io-window",
                              &s->pci_io_space, 0, 0x100000);
 
-    sysbus_init_mmio(sbd, &s->pci_io_space);
+   	 sysbus_init_mmio(sbd, &s->pci_io_space);
 
-    /* Create the alias regions corresponding to our three windows onto
-     * PCI memory space. The sizes vary from board to board; the base
-     * offsets are guest controllable via the IMAP registers.
-     */
+   	 /* Create the alias regions corresponding to our three windows onto
+   	  * PCI memory space. The sizes vary from board to board; the base
+   	  * offsets are guest controllable via the IMAP registers.
+   	  */
     for (i = 0; i < 3; i++) {
-        memory_region_init_alias(&s->pci_mem_window[i], OBJECT(s), "pci-vbp-window",
+       	 memory_region_init_alias(&s->pci_mem_window[i], OBJECT(s), "pci-vbp-window",
                                  &s->pci_mem_space, 0, s->mem_win_size[i]);
-        sysbus_init_mmio(sbd, &s->pci_mem_window[i]);
+         sysbus_init_mmio(sbd, &s->pci_mem_window[i]);
     }
 
     /* TODO Remove once realize propagates to child devices. */
     object_property_set_bool(OBJECT(&s->pci_dev), true, "realized", errp);
+
+
 }
 
 static int versatile_pci_host_init(PCIDevice *d)
@@ -470,8 +642,10 @@ static void versatile_pci_host_class_init(ObjectClass *klass, void *data)
     DeviceClass *dc = DEVICE_CLASS(klass);
 
     k->init = versatile_pci_host_init;
-    k->vendor_id = PCI_VENDOR_ID_XILINX;
-    k->device_id = PCI_DEVICE_ID_XILINX_XC2VP30;
+//    k->vendor_id = PCI_VENDOR_ID_XILINX;
+k->vendor_id = PCI_VENDOR_ID_BROADCOM;
+//    k->device_id = PCI_DEVICE_ID_XILINX_XC2VP30;
+k->device_id = BCM501_UNKNOWN;
     k->class_id = PCI_CLASS_PROCESSOR_CO;
     /*
      * PCI-facing part of the host bridge, not usable without the
@@ -490,6 +664,7 @@ static const TypeInfo versatile_pci_host_info = {
 static Property pci_vpb_properties[] = {
     DEFINE_PROP_UINT8("broken-irq-mapping", PCIVPBState, irq_mapping_prop,
                       PCI_VPB_IRQMAP_ASSUME_OK),
+    DEFINE_PROP_UINT32("config_baseaddr", PCIVPBState, config_baseaddr, 0),
     DEFINE_PROP_END_OF_LIST()
 };
 
@@ -517,8 +692,11 @@ static void pci_realview_init(Object *obj)
 
     s->realview = 1;
     /* The PCI window sizes are different on Realview boards */
-    s->mem_win_size[0] = 0x01000000;
-    s->mem_win_size[1] = 0x04000000;
+//    s->mem_win_size[0] = 0x01000000;
+//    s->mem_win_size[1] = 0x04000000;
+/*for broadcom pci memory window sized */
+    s->mem_win_size[0] = 0x08000000;
+    s->mem_win_size[1] = 0x08000000;
     s->mem_win_size[2] = 0x08000000;
 }
 

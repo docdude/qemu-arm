@@ -37,7 +37,7 @@
 #include "exec/address-spaces.h"
 #include "hw/hotplug.h"
 
-//#define DEBUG_PCI
+#define DEBUG_PCI
 #ifdef DEBUG_PCI
 # define PCI_DPRINTF(format, ...)       printf(format, ## __VA_ARGS__)
 #else
@@ -379,6 +379,7 @@ PCIBus *pci_register_bus(DeviceState *parent, const char *name,
 
 int pci_bus_num(PCIBus *s)
 {
+printf("HHEEAER %04x\n",pci_bus_is_root(s));
     if (pci_bus_is_root(s))
         return 0;       /* pci host bridge */
     return s->parent_dev->config[PCI_SECONDARY_BUS];
@@ -817,8 +818,10 @@ static PCIDevice *do_pci_register_device(PCIDevice *pci_dev, PCIBus *bus,
     if (devfn < 0) {
         for(devfn = bus->devfn_min ; devfn < ARRAY_SIZE(bus->devices);
             devfn += PCI_FUNC_MAX) {
+
             if (!bus->devices[devfn])
                 goto found;
+
         }
         error_report("PCI: no slot/function available for %s, all in use", name);
         return NULL;
@@ -1678,10 +1681,12 @@ static PCIBus *pci_find_bus_nr(PCIBus *bus, int bus_num)
     PCIBus *sec;
 
     if (!bus) {
+
         return NULL;
     }
 
     if (pci_bus_num(bus) == bus_num) {
+PCI_DPRINTF("HHExxxEAER %04x\n", bus_num);
         return bus;
     }
 
@@ -1741,8 +1746,14 @@ PCIDevice *pci_find_device(PCIBus *bus, int bus_num, uint8_t devfn)
 
     if (!bus)
         return NULL;
+// for(devfn = bus->devfn_min ; devfn < ARRAY_SIZE(bus->devices)-1;
+  //          devfn += PCI_FUNC_MAX) {
 
-    return bus->devices[devfn];
+    PCI_DPRINTF("HHExfindAER %04x %x\n", bus_num, (unsigned)devfn);     
+//PCI_DPRINTF("PCI: slot %d function %d  in use by %s\n",PCI_SLOT(devfn), PCI_FUNC(devfn), bus->devices[devfn]->name);
+  //      }
+
+    return bus->devices[88];
 }
 
 static int pci_qdev_init(DeviceState *qdev)

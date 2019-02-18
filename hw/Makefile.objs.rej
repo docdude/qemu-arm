@@ -1,0 +1,10 @@
+--- hw/Makefile.objs
++++ hw/Makefile.objs
+@@ -168,6 +168,7 @@
+ common-obj-y += usb/
+ common-obj-$(CONFIG_PTIMER) += ptimer.o
+ common-obj-$(CONFIG_MAX7310) += max7310.o
++common-obj-y += audio.o
+ common-obj-$(CONFIG_WM8750) += wm8750.o
+ common-obj-$(CONFIG_TWL92230) += twl92230.o
+ common-obj-$(CONFIG_TSC2005) += tsc2005.o

@@ -12,6 +12,7 @@
 #include "hw/sysbus.h"
 #include "hw/hw.h"
 #include "hw/i2c/i2c.h"
+#include "hw/audio.h"
 #include "audio/audio.h"
 
 #define MP_AUDIO_SIZE           0x00001000
@@ -85,32 +86,38 @@ static void mv88w8618_audio_callback(void *opaque, int free_out, int free_in)
     mem_buffer = buf;
     if (s->playback_mode & MP_AUDIO_16BIT_SAMPLE) {
         if (s->playback_mode & MP_AUDIO_MONO) {
-            codec_buffer = wm8750_dac_buffer(s->wm, block_size >> 1);
+//            codec_buffer = audio_codec_dac_buffer(AUDIO_CODEC(s->wm),
+//                                                  block_size >> 1);
+            codec_buffer = audio_codec_dac_buffer(AUDIO_CODEC(s->wm),
++                                                  block_size >> 1);
             for (pos = 0; pos < block_size; pos += 2) {
                 *codec_buffer++ = *(int16_t *)mem_buffer;
                 *codec_buffer++ = *(int16_t *)mem_buffer;
                 mem_buffer += 2;
             }
         } else {
-            memcpy(wm8750_dac_buffer(s->wm, block_size >> 2),
-                   (uint32_t *)mem_buffer, block_size);
+            memcpy(audio_codec_dac_buffer(AUDIO_CODEC(s->wm),
+                                          block_size >> 2),
+                   (uint32_t *)mem_buffer,
+                   block_size);
         }
     } else {
         if (s->playback_mode & MP_AUDIO_MONO) {
-            codec_buffer = wm8750_dac_buffer(s->wm, block_size);
+            codec_buffer = audio_codec_dac_buffer(s->wm, block_size);
             for (pos = 0; pos < block_size; pos++) {
                 *codec_buffer++ = cpu_to_le16(256 * *mem_buffer);
                 *codec_buffer++ = cpu_to_le16(256 * *mem_buffer++);
             }
         } else {
-            codec_buffer = wm8750_dac_buffer(s->wm, block_size >> 1);
+            codec_buffer = audio_codec_dac_buffer(AUDIO_CODEC(s->wm),
+                                                  block_size >> 1);
             for (pos = 0; pos < block_size; pos += 2) {
                 *codec_buffer++ = cpu_to_le16(256 * *mem_buffer++);
                 *codec_buffer++ = cpu_to_le16(256 * *mem_buffer++);
             }
         }
     }
-    wm8750_dac_commit(s->wm);
+    audio_codec_dac_commit(AUDIO_CODEC(s->wm));
 
     s->last_free = free_out - block_size;
 
@@ -138,7 +145,7 @@ static void mv88w8618_audio_clock_update(mv88w8618_audio_state *s)
     }
     rate /= ((s->clock_div >> 8) & 0xff) + 1;
 
-    wm8750_set_bclk_in(s->wm, rate);
+    audio_codec_set_bclk_in(AUDIO_CODEC(s->wm), rate);
 }
 
 static uint64_t mv88w8618_audio_read(void *opaque, hwaddr offset,
@@ -246,7 +253,9 @@ static int mv88w8618_audio_init(SysBusDevice *dev)
 
     sysbus_init_irq(dev, &s->irq);
 
-    wm8750_data_req_set(s->wm, mv88w8618_audio_callback, s);
+    audio_codec_data_req_set(DEVICE(s->wm),
+                             mv88w8618_audio_callback,
+                             s);
 
     memory_region_init_io(&s->iomem, OBJECT(s), &mv88w8618_audio_ops, s,
                           "audio", MP_AUDIO_SIZE);

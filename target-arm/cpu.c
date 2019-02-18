@@ -384,6 +384,54 @@ static void arm926_initfn(Object *obj)
     cpu->reset_sctlr = 0x00090078;
 }
 
+static void fa606te_initfn(Object *obj)
+{
+    ARMCPU *cpu = ARM_CPU(obj);
+    set_feature(&cpu->env, ARM_FEATURE_V5);
+    set_feature(&cpu->env, ARM_FEATURE_DUMMY_C15_REGS);
+    set_feature(&cpu->env, ARM_FEATURE_MPU_FARADAY);
+    cpu->midr = 0x66056061; /* CR0-0 Identification Code Register (ID) */
+    cpu->ctr = 0x00000000;  /* CR0-1 Cache Type Register (CTR) */
+    cpu->reset_sctlr = 0x00000078;  /* CR1-0 Configuration Register (CFG) */
+}
+
+static void fa616te_initfn(Object *obj)
+{
+    ARMCPU *cpu = ARM_CPU(obj);
+    set_feature(&cpu->env, ARM_FEATURE_V5);
+    set_feature(&cpu->env, ARM_FEATURE_DUMMY_C15_REGS);
+    set_feature(&cpu->env, ARM_FEATURE_CACHE_TEST_CLEAN);
+    set_feature(&cpu->env, ARM_FEATURE_TCM_FARADAY);
+    cpu->midr = 0x66056161; /* CR0-0 Identification Code Register (ID) */
+    cpu->ctr = 0x1d152152;  /* CR0-1 Cache Type Register (CTR) */
+    cpu->reset_sctlr = 0x00050078;  /* CR1-0 Configuration Register (CFG) */
+}
+
+static void fa626te_initfn(Object *obj)
+{
+    ARMCPU *cpu = ARM_CPU(obj);
+    set_feature(&cpu->env, ARM_FEATURE_V5);
+    set_feature(&cpu->env, ARM_FEATURE_DUMMY_C15_REGS);
+    set_feature(&cpu->env, ARM_FEATURE_CACHE_TEST_CLEAN);
+    set_feature(&cpu->env, ARM_FEATURE_TCM_FARADAY);
+    set_feature(&cpu->env, ARM_FEATURE_AUXCR);
+    cpu->midr = 0x66056261; /* CR0-0 Identification Code Register (ID) */
+    cpu->ctr = 0x0f192192;  /* CR0-1 Cache Type Register (CTR) */
+    cpu->reset_sctlr = 0x00000078;  /* CR1-0 Configuration Register (CFG) */
+}
+
+static void fa726te_initfn(Object *obj)
+{
+    ARMCPU *cpu = ARM_CPU(obj);
+    set_feature(&cpu->env, ARM_FEATURE_V5);
+    set_feature(&cpu->env, ARM_FEATURE_DUMMY_C15_REGS);
+    set_feature(&cpu->env, ARM_FEATURE_CACHE_TEST_CLEAN);
+    set_feature(&cpu->env, ARM_FEATURE_TCM_FARADAY);
+    cpu->midr = 0x66057261; /* CR0-0 Identification Code Register (ID) */
+    cpu->ctr = 0x1d192192;  /* CR0-1 Cache Type Register (CTR) */
+    cpu->reset_sctlr = 0x00050078;  /* CR1-0 Configuration Register (CFG) */
+}
+
 static void arm946_initfn(Object *obj)
 {
     ARMCPU *cpu = ARM_CPU(obj);
@@ -993,6 +1041,10 @@ typedef struct ARMCPUInfo {
 static const ARMCPUInfo arm_cpus[] = {
 #if !defined(CONFIG_USER_ONLY) || !defined(TARGET_AARCH64)
     { .name = "arm926",      .initfn = arm926_initfn },
+    { .name = "fa606te",     .initfn = fa606te_initfn },
+    { .name = "fa616te",     .initfn = fa616te_initfn },
+    { .name = "fa626te",     .initfn = fa626te_initfn },
+    { .name = "fa726te",     .initfn = fa726te_initfn },
     { .name = "arm946",      .initfn = arm946_initfn },
     { .name = "arm1026",     .initfn = arm1026_initfn },
     /* What QEMU calls "arm1136-r2" is actually the 1136 r0p2, i.e. an

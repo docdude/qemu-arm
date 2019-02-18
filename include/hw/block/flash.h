@@ -35,8 +35,17 @@ void nand_setpins(DeviceState *dev, uint8_t cle, uint8_t ale,
                   uint8_t ce, uint8_t wp, uint8_t gnd);
 void nand_getpins(DeviceState *dev, int *rb);
 void nand_setio(DeviceState *dev, uint32_t value);
-uint32_t nand_getio(DeviceState *dev);
+uint64_t nand_getio(DeviceState *dev);
 uint32_t nand_getbuswidth(DeviceState *dev);
+/* nand_core.c */
+void ncore_cmdfunc(DeviceState *dev, uint32_t value);
+DeviceState *ncore_init(BlockDriverState *bdrv, int manf_id, int chip_id);
+void ncore_setpins(DeviceState *dev, uint8_t cle, uint8_t ale,
+                  uint8_t ce, uint8_t wp, uint8_t gnd);
+void ncore_getpins(DeviceState *dev, int *rb);
+void ncore_setio(DeviceState *dev, uint32_t value);
+uint64_t ncore_getio(DeviceState *dev);
+uint32_t ncore_getbuswidth(DeviceState *dev);
 
 #define NAND_MFR_TOSHIBA	0x98
 #define NAND_MFR_SAMSUNG	0xec
@@ -46,6 +55,8 @@ uint32_t nand_getbuswidth(DeviceState *dev);
 #define NAND_MFR_STMICRO	0x20
 #define NAND_MFR_HYNIX		0xad
 #define NAND_MFR_MICRON		0x2c
+#define NAND_MFR_MXIC		0xc2
+
 
 /* onenand.c */
 void *onenand_raw_otp(DeviceState *onenand_device);
@@ -60,5 +71,6 @@ typedef struct {
 uint8_t ecc_digest(ECCState *s, uint8_t sample);
 void ecc_reset(ECCState *s);
 extern VMStateDescription vmstate_ecc_state;
+//extern VMStateDescription vmstate_ncore;
 
 #endif

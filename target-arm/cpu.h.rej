@@ -1,0 +1,29 @@
+--- target-arm/cpu.h
++++ target-arm/cpu.h
+@@ -152,6 +152,8 @@
+         uint32_t c15_diagnostic; /* diagnostic register */
+         uint32_t c15_power_diagnostic;
+         uint32_t c15_power_control; /* power control */
++        uint32_t c15_tcm_data;      /* Data TCM region register */
++        uint32_t c15_tcm_inst;      /* Instruction TCM region register */
+     } cp15;
+ 
+     struct {
+@@ -392,6 +394,8 @@
+     ARM_FEATURE_MPIDR, /* has cp15 MPIDR */
+     ARM_FEATURE_PXN, /* has Privileged Execute Never bit */
+     ARM_FEATURE_LPAE, /* has Large Physical Address Extension */
++    ARM_FEATURE_TCM_FARADAY, /* Faraday Scratchpad(TCM) */
++    ARM_FEATURE_MPU_FARADAY, /* Faraday MPU */
+ };
+ 
+ static inline int arm_feature(CPUARMState *env, int feature)
+@@ -640,7 +644,7 @@
+ #define cpu_signal_handler cpu_arm_signal_handler
+ #define cpu_list arm_cpu_list
+ 
+-#define CPU_SAVE_VERSION 9
++#define CPU_SAVE_VERSION 10
+ 
+ /* MMU modes definitions */
+ #define MMU_MODE0_SUFFIX _kernel

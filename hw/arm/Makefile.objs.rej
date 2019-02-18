@@ -1,0 +1,11 @@
+--- hw/arm/Makefile.objs
++++ hw/arm/Makefile.objs
+@@ -27,7 +27,7 @@
+ obj-y += ftintc020.o ftahbc020.o ftddrii030.o ftpwmtmr010.o ftwdt010.o \
+                 ftrtc011.o ftdmac020.o ftapbbrg020.o ftnandc021.o fti2c010.o \
+                 ftssp010.o ftgmac100.o ftlcdc200.o fttsc010.o ftsdc010.o \
+-                ftmac110.o fttmr010.o
++                ftmac110.o fttmr010.o ftspi020.o
+ 
+ obj-y := $(addprefix ../,$(obj-y))
+ 

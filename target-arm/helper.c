@@ -1872,6 +1872,88 @@ static const ARMCPRegInfo trustzone_cp_reginfo[] = {
     REGINFO_SENTINEL
 };
 
+static uint64_t faraday_pmsav5_ircfg_read(CPUARMState *env,
+                                     const ARMCPRegInfo *ri)
+                                  //   uint64_t *value)
+{
+ //   if (ri->crm >= 4) {
+ //       return EXCP_UDEF;
+  //  }
+ //   *value = 
+    return env->cp15.c6_region[ri->crm];
+ //   return 0;
+}
+
+static void faraday_pmsav5_ircfg_write(CPUARMState *env,
+                                      const ARMCPRegInfo *ri,
+                                      uint64_t value)
+{
+//    if (ri->crm >= 4) {
+ //       return EXCP_UDEF;
+ //   }
+    env->cp15.c6_region[ri->crm] = value;
+//    return 0;
+}
+
+static uint64_t faraday_pmsav5_drcfg_read(CPUARMState *env,
+                                     const ARMCPRegInfo *ri)
+                              //       uint64_t *value)
+{
+//    if (ri->crm >= 4) {
+ //       return EXCP_UDEF;
+ //   }
+ //   *value = 
+ return env->cp15.c6_region[ri->crm + 4];
+  //  return 0;
+}
+
+static void faraday_pmsav5_drcfg_write(CPUARMState *env,
+                                      const ARMCPRegInfo *ri,
+                                      uint64_t value)
+{
+ //   if (ri->crm >= 4) {
+ //       return EXCP_UDEF;
+//    }
+    env->cp15.c6_region[ri->crm + 4] = value;
+ //   return 0;
+}
+
+#if 1
+static const ARMCPRegInfo faraday_pmsav5_cp_reginfo[] = {
+    /* Data region access permission */
+    { .name = "DATA_AP", .cp = 15, .crn = 5, .crm = 0, .opc1 = 0, .opc2 = 0,
+      .access = PL1_RW,
+      .fieldoffset = offsetof(CPUARMState, cp15.c5_data), .resetvalue = 0,
+      .readfn = pmsav5_data_ap_read, .writefn = pmsav5_data_ap_write, },
+    /* Instruction region access permission */
+    { .name = "INSN_AP", .cp = 15, .crn = 5, .crm = 0, .opc1 = 0, .opc2 = 1,
+      .access = PL1_RW,
+      .fieldoffset = offsetof(CPUARMState, cp15.c5_insn), .resetvalue = 0,
+      .readfn = pmsav5_insn_ap_read, .writefn = pmsav5_insn_ap_write, },
+    /* Data region base and size registers */
+    { .name = "DR_CFG", .cp = 15, .crn = 6, .crm = CP_ANY,
+      .opc1 = 0, .opc2 = 0, .access = PL1_RW,
+      .readfn = faraday_pmsav5_drcfg_read,
+      .writefn = faraday_pmsav5_drcfg_write, },
+    /* Instruction region base and size registers */
+    { .name = "IR_CFG", .cp = 15, .crn = 6, .crm = CP_ANY,
+      .opc1 = 0, .opc2 = 1, .access = PL1_RW,
+      .readfn = faraday_pmsav5_ircfg_read,
+      .writefn = faraday_pmsav5_ircfg_write, },
+    REGINFO_SENTINEL
+};
+#endif
+static const ARMCPRegInfo faraday_tcm_cp_reginfo[] = {
+    { .name = "DTCMRR", .cp = 15, .crn = 9, .crm = 1,
+      .opc1 = 0, .opc2 = 0, .access = PL1_RW, .resetvalue = 0x0,
+      .fieldoffset = offsetof(CPUARMState, cp15.c15_tcm_data) },
+    { .name = "ITCMRR", .cp = 15, .crn = 9, .crm = 1,
+      .opc1 = 0, .opc2 = 1, .access = PL1_RW, .resetvalue = 0x0,
+      .fieldoffset = offsetof(CPUARMState, cp15.c15_tcm_inst) },
+    REGINFO_SENTINEL
+};
+
+
 static void sctlr_write(CPUARMState *env, const ARMCPRegInfo *ri,
                         uint64_t value)
 {
@@ -2118,6 +2200,12 @@ void register_cp_regs_for_features(ARMCPU *cpu)
     }
     if (arm_feature(env, ARM_FEATURE_TRUSTZONE)) {
         define_arm_cp_regs(cpu, trustzone_cp_reginfo);
+    }
+    if (arm_feature(env, ARM_FEATURE_TCM_FARADAY)) {
+        define_arm_cp_regs(cpu, faraday_tcm_cp_reginfo);
+    }
+    if (arm_feature(env, ARM_FEATURE_MPU_FARADAY)) {
+        define_arm_cp_regs(cpu, faraday_pmsav5_cp_reginfo);
     }
     /* Slightly awkwardly, the OMAP and StrongARM cores need all of
      * cp15 crn=0 to be writes-ignored, whereas for other cores they should

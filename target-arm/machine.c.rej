@@ -1,0 +1,20 @@
+--- target-arm/machine.c
++++ target-arm/machine.c
+@@ -62,6 +62,8 @@
+     qemu_put_be32(f, env->cp15.c15_power_control);
+     qemu_put_be32(f, env->cp15.c15_diagnostic);
+     qemu_put_be32(f, env->cp15.c15_power_diagnostic);
++    qemu_put_be32(f, env->cp15.c15_tcm_data);
++    qemu_put_be32(f, env->cp15.c15_tcm_inst);
+ 
+     qemu_put_be64(f, env->features);
+ 
+@@ -182,6 +184,8 @@
+     env->cp15.c15_power_control = qemu_get_be32(f);
+     env->cp15.c15_diagnostic = qemu_get_be32(f);
+     env->cp15.c15_power_diagnostic = qemu_get_be32(f);
++    env->cp15.c15_tcm_data = qemu_get_be32(f);
++    env->cp15.c15_tcm_inst = qemu_get_be32(f);
+ 
+     env->features = qemu_get_be64(f);
+ 

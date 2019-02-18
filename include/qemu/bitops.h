@@ -3,7 +3,8 @@
  *
  * Copyright (C) 2010 Corentin Chary <corentin.chary@gmail.com>
  *
- * Mostly inspired by (stolen from) linux/bitmap.h and linux/bitops.h
+ * Mostly inspired by (stolen from) linux/bitmap.h, linux/bitops.h
+ * and linux/bitrev.h
  *
  * This work is licensed under the terms of the GNU LGPL, version 2.1 or later.
  * See the COPYING.LIB file in the top-level directory.
@@ -401,6 +402,62 @@ static inline uint64_t deposit64(uint64_t value, int start, int length,
     assert(start >= 0 && length > 0 && length <= 64 - start);
     mask = (~0ULL >> (64 - length)) << start;
     return (value & ~mask) | ((fieldval << start) & mask);
+}
+
+/**
+ * bitrev8:
+ * @value: the value to reverse bit ordering from
+ *
+ * Reverse the 8 bit input @value
+ *
+ * Returns: the input @value with reversed bit ordering
+ */
+static inline uint8_t bitrev8(uint8_t value)
+{
+    value = (value & 0xF0) >> 4 | (value & 0x0F) << 4;
+    value = (value & 0xCC) >> 2 | (value & 0x33) << 2;
+    value = (value & 0xAA) >> 1 | (value & 0x55) << 1;
+    return value;
+}
+
+/**
+ * bitrev16:
+ * @value: the value to reverse bit ordering from
+ *
+ * Reverse the 16 bit input @value
+ *
+ * Returns: the input @value with reversed bit ordering
+ */
+static inline uint16_t bitrev16(uint16_t value)
+{
+    return (bitrev8(value & 0xff) << 8) | bitrev8(value >> 8);
+}
+
+/**
+ * bitrev32:
+ * @value: the value to reverse bit ordering from
+ *
+ * Reverse the 32 bit input @value
+ *
+ * Returns: the input @value with reversed bit ordering
+ */
+static inline uint32_t bitrev32(uint32_t value)
+{
+    return (bitrev16(value & 0xffff) << 16) | bitrev16(value >> 16);
+}
+
+/**
+ * bitrev64:
+ * @value: the value to reverse bit ordering from
+ *
+ * Reverse the 64 bit input @value
+ *
+ * Returns: the input @value with reversed bit ordering
+ */
+static inline uint64_t bitrev64(uint64_t value)
+{
+    return ((uint64_t)bitrev32(value & 0xffffffffULL) << 32)
+        | (uint64_t)bitrev32(value >> 32);
 }
 
 #endif

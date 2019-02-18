@@ -1,0 +1,15 @@
+obj-y += boot.o collie.o exynos4_boards.o gumstix.o highbank.o
+obj-$(CONFIG_DIGIC) += digic_boards.o
+obj-y += integratorcp.o kzm.o mainstone.o musicpal.o nseries.o
+obj-y += omap_sx1.o overo.o palm.o realview.o spitz.o stellaris.o
+obj-y += tosa.o versatilepb.o vexpress.o virt.o xilinx_zynq.o z2.o
+
+obj-y += armv7m.o exynos4210.o pxa2xx.o pxa2xx_gpio.o pxa2xx_pic.o
+obj-$(CONFIG_DIGIC) += digic.o
+obj-y += omap1.o omap2.o omap3.o strongarm.o beagle.o broadcom.o
+obj-$(CONFIG_ALLWINNER_A10) += allwinner-a10.o cubieboard.o
+obj-y += ftplat_a369.o ftplat_a369soc.o ftplat_a369scu.o ftplat_a369kpd.o
+obj-y += ftintc020.o ftahbc020.o ftddrii030.o ftpwmtmr010.o ftwdt010.o \
+		ftrtc011.o ftdmac020.o ftapbbrg020.o ftnandc021.o fti2c010.o \
+                ftssp010.o ftgmac100.o ftlcdc200.o fttsc010.o ftsdc010.o \
+		ftmac110.o fttmr010.o

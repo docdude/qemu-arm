@@ -24,6 +24,7 @@
 #include "ui/console.h"
 #include "block/block.h"
 #include "audio/audio.h"
+#include "hw/audio.h"
 #include "hw/boards.h"
 #include "sysemu/blockdev.h"
 #include "hw/sysbus.h"
@@ -747,9 +748,11 @@ static void spitz_i2c_setup(PXA2xxState *cpu)
                     qemu_allocate_irqs(spitz_wm8750_addr, wm, 1)[0]);
     /* .. and to the sound interface.  */
     cpu->i2s->opaque = wm;
-    cpu->i2s->codec_out = wm8750_dac_dat;
-    cpu->i2s->codec_in = wm8750_adc_dat;
-    wm8750_data_req_set(wm, cpu->i2s->data_req, cpu->i2s);
+    cpu->i2s->codec_out = audio_codec_dac_dat;
+    cpu->i2s->codec_in = audio_codec_adc_dat;
+    audio_codec_data_req_set(DEVICE(wm),
+                             cpu->i2s->data_req,
+                             cpu->i2s);
 }
 
 static void spitz_akita_i2c_setup(PXA2xxState *cpu)

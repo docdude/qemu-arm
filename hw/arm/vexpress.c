@@ -451,13 +451,13 @@ static uint32_t find_int_controller(void *fdt)
 
 static void vexpress_modify_dtb(const struct arm_boot_info *info, void *fdt)
 {
-    uint32_t acells, scells, intc;
+    uint32_t acells, scells, gic;
     const VEDBoardInfo *daughterboard = (const VEDBoardInfo *)info;
 
     acells = qemu_fdt_getprop_cell(fdt, "/", "#address-cells");
     scells = qemu_fdt_getprop_cell(fdt, "/", "#size-cells");
-    intc = find_int_controller(fdt);
-    if (!intc) {
+    gic = find_int_controller(fdt);
+    if (!gic) {
         /* Not fatal, we just won't provide virtio. This will
          * happen with older device tree blobs.
          */
@@ -473,7 +473,7 @@ static void vexpress_modify_dtb(const struct arm_boot_info *info, void *fdt)
         for (i = NUM_VIRTIO_TRANSPORTS - 1; i >= 0; i--) {
             add_virtio_mmio_node(fdt, acells, scells,
                                  map[VE_VIRTIO] + 0x200 * i,
-                                 0x200, intc, 40 + i);
+                                 0x200, gic, 40 + i);
         }
     }
 }

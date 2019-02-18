@@ -755,7 +755,9 @@ static inline void omap3_nand_readpage(struct omap3_nand_boot_desc_s *nd,
     uint32_t i;
     
     omap3_nand_sendcmd(nd, 0x00); /* read page */
+printf("%s ****after command 0x00\n", __func__);
     omap3_nand_sendaddr_byte(nd, 0x00);
+printf("%s ****pageaddr %x\n", __func__,pageaddr);
     if (nd->pagesize >= 2048) {
         omap3_nand_sendaddr_byte(nd, 0x00);
         omap3_nand_sendaddr_byte(nd, (uint8_t)(pageaddr & 0xff));
@@ -763,6 +765,7 @@ static inline void omap3_nand_readpage(struct omap3_nand_boot_desc_s *nd,
         if (nd->capacity_Mb >= 2048)
             omap3_nand_sendaddr_byte(nd, (uint8_t)((pageaddr >> 16) & 0xff));
         omap3_nand_sendcmd(nd, 0x30); /* confirm read */
+printf("%s ****after command 0x30\n", __func__);
     } else {
         omap3_nand_sendaddr_byte(nd, (uint8_t)(pageaddr & 0xff));
         omap3_nand_sendaddr_byte(nd, (uint8_t)((pageaddr >> 8) & 0xff));
@@ -792,6 +795,7 @@ static int omap3_nand_boot(struct omap_mpu_state_s *mpu, int bus16)
     omap3_nand_sendcmd(nd, 0xff); /* reset */
     omap3_nand_sendcmd(nd, 0x90); /* read id */
     omap3_nand_sendaddr_byte(nd, 0);
+printf("%s ****before id read\n", __func__);
     id[0] = omap3_nand_readbyte(nd); /* manufacturer id */
     id[1] = omap3_nand_readbyte(nd); /* device id */
     id[2] = omap3_nand_readbyte(nd); /* don't care */
@@ -812,10 +816,13 @@ static int omap3_nand_boot(struct omap_mpu_state_s *mpu, int bus16)
     if (nd->pagesize) {
         data = g_malloc0(nd->pagesize);
         /* TODO: scan through 4 first blocks for image */
+printf("%s ****before readpage page=%d\n", __func__,page);
         omap3_nand_readpage(nd, 0, data);
+printf("%s ****after read page page=%d\n", __func__,page);
         boot = omap3_boot_init(mpu, nand, data, nd->pagesize);
-        while (omap3_boot_block(data, nd->pagesize, boot))
-            omap3_nand_readpage(nd, ++page, data);
+        while (omap3_boot_block(data, nd->pagesize, boot)) {
+printf("%s ****page loop page=%d\n", __func__,page);
+           omap3_nand_readpage(nd, ++page, data); }
         result = omap3_boot_finish(boot);
         free(data);
     }

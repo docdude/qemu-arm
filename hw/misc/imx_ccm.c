@@ -19,7 +19,7 @@
 #define CKIL_FREQ    32768 /* nominal 32khz clock */
 
 
-//#define DEBUG_CCM 1
+#define DEBUG_CCM 1
 #ifdef DEBUG_CCM
 #define DPRINTF(fmt, args...) \
 do { printf("imx_ccm: " fmt , ##args); } while (0)
@@ -200,7 +200,7 @@ static uint64_t imx_ccm_read(void *opaque, hwaddr offset,
 {
     IMXCCMState *s = (IMXCCMState *)opaque;
 
-    DPRINTF("read(offset=%x)", offset >> 2);
+    DPRINTF("read(offset=%" PRIx64 ")", offset >> 2);
     switch (offset >> 2) {
     case 0: /* CCMR */
         DPRINTF(" ccmr = 0x%x\n", s->ccmr);
@@ -231,6 +231,9 @@ static uint64_t imx_ccm_read(void *opaque, hwaddr offset,
     case 23:
         DPRINTF(" pcmr0 = 0x%x\n", s->pmcr0);
         return s->pmcr0;
+    case 0xa8: /* offset from bcm5301x_pcie.c [0x2a0] cru_straps_ctrl */
+	DPRINTF(" cru_straps_ctrl = 0x%x\n", 0x132f0);
+        return 0x132f0;
     }
     DPRINTF(" return 0\n");
     return 0;
@@ -241,7 +244,7 @@ static void imx_ccm_write(void *opaque, hwaddr offset,
 {
     IMXCCMState *s = (IMXCCMState *)opaque;
 
-    DPRINTF("write(offset=%x, value = %x)\n",
+    DPRINTF("write(offset=%" PRIx64 ", value = %x)\n",
             offset >> 2, (unsigned int)value);
     switch (offset >> 2) {
     case 0:

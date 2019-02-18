@@ -1392,8 +1392,17 @@ static UHCIInfo uhci_info[] = {
         .revision  = 0x03,
         .irq_pin   = 2,
         .unplug    = false,
+    },{
+        .name      = "BCM471A-usb-uhci",
+        .vendor_id = PCI_VENDOR_ID_BROADCOM,
+        .device_id = BCM47XX_USB20H_ID, //BCM47XX_USB20H_ID	0x471a		/* 47xx usb 2.0 host */
+        .revision  = 0x03,
+        .irq_pin   = 2,
+        .unplug    = false,
     }
 };
+//#define	BCM47XX_USB20H_ID	0x471a		/* 47xx usb 2.0 host */
+//#define	BCM47XX_USB20D_ID	0x471b		/* 47xx usb 2.0 device */
 
 static void uhci_register_types(void)
 {

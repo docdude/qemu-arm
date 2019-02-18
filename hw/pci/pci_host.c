@@ -23,7 +23,7 @@
 #include "trace.h"
 
 /* debug PCI */
-//#define DEBUG_PCI
+#define DEBUG_PCI
 
 #ifdef DEBUG_PCI
 #define PCI_DPRINTF(fmt, ...) \
@@ -49,7 +49,7 @@ static inline PCIDevice *pci_dev_find_by_addr(PCIBus *bus, uint32_t addr)
 }
 
 void pci_host_config_write_common(PCIDevice *pci_dev, uint32_t addr,
-                                  uint32_t limit, uint32_t val, uint32_t len)
+                                  uint32_t limit, uint64_t val, uint32_t len)
 {
     assert(len <= 4);
     trace_pci_cfg_write(pci_dev->name, PCI_SLOT(pci_dev->devfn),
@@ -57,10 +57,10 @@ void pci_host_config_write_common(PCIDevice *pci_dev, uint32_t addr,
     pci_dev->config_write(pci_dev, addr, val, MIN(len, limit - addr));
 }
 
-uint32_t pci_host_config_read_common(PCIDevice *pci_dev, uint32_t addr,
+uint64_t pci_host_config_read_common(PCIDevice *pci_dev, uint32_t addr,
                                      uint32_t limit, uint32_t len)
 {
-    uint32_t ret;
+    uint64_t ret;
 
     assert(len <= 4);
     ret = pci_dev->config_read(pci_dev, addr, MIN(len, limit - addr));
@@ -70,7 +70,7 @@ uint32_t pci_host_config_read_common(PCIDevice *pci_dev, uint32_t addr,
     return ret;
 }
 
-void pci_data_write(PCIBus *s, uint32_t addr, uint32_t val, int len)
+void pci_data_write(PCIBus *s, uint32_t addr, uint64_t val, int len)
 {
     PCIDevice *pci_dev = pci_dev_find_by_addr(s, addr);
     uint32_t config_addr = addr & (PCI_CONFIG_SPACE_SIZE - 1);
@@ -79,7 +79,7 @@ void pci_data_write(PCIBus *s, uint32_t addr, uint32_t val, int len)
         return;
     }
 
-    PCI_DPRINTF("%s: %s: addr=%02" PRIx32 " val=%08" PRIx32 " len=%d\n",
+    PCI_DPRINTF("%s: %s: addr=%02" PRIx32 " val=%08" PRIx64 " len=%d\n",
                 __func__, pci_dev->name, config_addr, val, len);
     pci_host_config_write_common(pci_dev, config_addr, PCI_CONFIG_SPACE_SIZE,
                                  val, len);
@@ -89,7 +89,7 @@ uint32_t pci_data_read(PCIBus *s, uint32_t addr, int len)
 {
     PCIDevice *pci_dev = pci_dev_find_by_addr(s, addr);
     uint32_t config_addr = addr & (PCI_CONFIG_SPACE_SIZE - 1);
-    uint32_t val;
+    uint64_t val;
 
     if (!pci_dev) {
         return ~0x0;
@@ -97,7 +97,7 @@ uint32_t pci_data_read(PCIBus *s, uint32_t addr, int len)
 
     val = pci_host_config_read_common(pci_dev, config_addr,
                                       PCI_CONFIG_SPACE_SIZE, len);
-    PCI_DPRINTF("%s: %s: addr=%02"PRIx32" val=%08"PRIx32" len=%d\n",
+    PCI_DPRINTF("%s: %s: addr=%02"PRIx32" val=%08"PRIx64" len=%d\n",
                 __func__, pci_dev->name, config_addr, val, len);
 
     return val;
